@@ -49,9 +49,8 @@ jobs:
 
       - name: Build Windows application
         run: |
-          $env:BUILD_DATE = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
           $env:GIT_COMMIT = git rev-parse --short HEAD
-          wails build -platform windows/amd64 -ldflags "-X 'main.BuildDate=$env:BUILD_DATE' -X main.GitCommit=$env:GIT_COMMIT"
+          wails build -platform windows/amd64 -ldflags "-X main.GitCommit=$env:GIT_COMMIT"
         shell: pwsh
 
       - name: Create Windows ZIP
@@ -107,9 +106,8 @@ jobs:
 
       - name: Build macOS application
         run: |
-          BUILD_DATE=$(date "+%Y-%m-%d %H:%M:%S")
           GIT_COMMIT=$(git rev-parse --short HEAD)
-          wails build -platform darwin/${{ matrix.arch }} -ldflags "-X main.BuildDate='$BUILD_DATE' -X main.GitCommit=$GIT_COMMIT"
+          wails build -platform darwin/${{ matrix.arch }} -ldflags "-X main.GitCommit=$GIT_COMMIT"
 
       - name: Create macOS ZIP
         run: |
@@ -165,9 +163,8 @@ jobs:
 
       - name: Build Linux application
         run: |
-          BUILD_DATE=$(date "+%Y-%m-%d %H:%M:%S")
           GIT_COMMIT=$(git rev-parse --short HEAD)
-          wails build -platform linux/amd64 -ldflags "-X main.BuildDate='$BUILD_DATE' -X main.GitCommit=$GIT_COMMIT"
+          wails build -platform linux/amd64 -ldflags "-X main.GitCommit=$GIT_COMMIT"
 
       - name: Create Linux tar.gz
         run: |
