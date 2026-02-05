@@ -1,0 +1,305 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Windows application
+        run: |
+          $BUILD_DATE = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          $GIT_COMMIT = git rev-parse --short HEAD
+          wails build -platform windows/amd64 -ldflags "-X main.BuildDate='$BUILD_DATE' -X main.GitCommit=$GIT_COMMIT"
+        shell: pwsh
+
+      - name: Create Windows ZIP
+        run: |
+          cd build/bin
+          Compress-Archive -Path margin.exe -DestinationPath ../../margin-windows-amd64.zip
+        shell: pwsh
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-${{ github.sha }}
+          path: |
+            margin-windows-amd64.zip
+          retention-days: 5
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build macOS application
+        run: |
+          BUILD_DATE=$(date "+%Y-%m-%d %H:%M:%S")
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          wails build -platform darwin/${{ matrix.arch }} -ldflags "-X main.BuildDate='$BUILD_DATE' -X main.GitCommit=$GIT_COMMIT"
+
+      - name: Create macOS ZIP
+        run: |
+          cd build/bin
+          zip -r ../../margin-macos-${{ matrix.arch }}.zip Margin.app
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-build-${{ github.sha }}
+          path: |
+            margin-macos-${{ matrix.arch }}.zip
+          retention-days: 5
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Linux application
+        run: |
+          BUILD_DATE=$(date "+%Y-%m-%d %H:%M:%S")
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          wails build -platform linux/amd64 -ldflags "-X main.BuildDate='$BUILD_DATE' -X main.GitCommit=$GIT_COMMIT"
+
+      - name: Create Linux tar.gz
+        run: |
+          cd build/bin
+          tar -czf ../../margin-linux-amd64.tar.gz margin
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build-${{ github.sha }}
+          path: |
+            margin-linux-amd64.tar.gz
+          retention-days: 5
+
+  release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build-${{ github.sha }}
+          path: artifacts
+
+      - name: Download macOS amd64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-amd64-build-${{ github.sha }}
+          path: artifacts
+
+      - name: Download macOS arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64-build-${{ github.sha }}
+          path: artifacts
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build-${{ github.sha }}
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Margin v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## 📊 Margin v${{ steps.get_version.outputs.VERSION }}
+            
+            > **Build portfolios that survive uncertainty** - 用结构对抗情绪
+            
+            一个基于《聪明的投资者》理念的投资组合管理工具，帮助你通过经典的资产配置比例对抗市场波动。
+            
+            ### ✨ 功能特性
+            
+            - 📊 **资产管理**: 手动录入股票/债券持仓，支持基金代码自动查询
+            - 📈 **可视化分析**: 饼图、折线图展示资产变化趋势
+            - ⚖️ **再平衡建议**: 基于格雷厄姆经典比例模型（25/75、50/50、70/30）
+            - 🔒 **数据加密**: AES-256-GCM 加密保护金额数据
+            - 💾 **离线存储**: SQLite 本地数据库，完全离线运行
+            - 📊 **指数行情**: 实时显示上证、沪深300、标普500、纳斯达克指数
+            - 📝 **历史记录**: 自动保存资产快照，追踪投资组合变化
+            - 🎨 **现代界面**: Element Plus 美观 UI，支持深色模式
+            
+            ### 💾 下载说明
+            
+            **Windows (64-bit):**
+            - `margin-windows-amd64.zip` - 解压即用，无需安装
+            
+            **macOS:**
+            - `margin-macos-amd64.zip` - Intel 芯片 Mac
+            - `margin-macos-arm64.zip` - Apple Silicon (M1/M2/M3) Mac
+            
+            **Linux (64-bit):**
+            - `margin-linux-amd64.tar.gz` - 通用 Linux 发行版
+            
+            ### 📁 数据存储
+            
+            数据库文件存储在用户主目录下：
+            - **Windows**: `C:\Users\<用户名>\.marginofsafety\margin.db`
+            - **Linux**: `/home/<用户名>/.marginofsafety/margin.db`
+            - **macOS**: `/Users/<用户名>/.marginofsafety/margin.db`
+            
+            ### 🚀 使用说明
+            
+            1. 首次运行设置锁屏密码
+            2. 在"资产管理"中输入基金代码（如：003298），自动获取基金信息
+            3. 输入持仓金额并保存
+            4. 查看"组合分析"了解当前股债比例
+            5. 使用"再平衡"功能获取调整建议
+            6. 定期保存历史快照，追踪资产变化
+            
+            ### 🛡 经典比例模型
+            
+            - **极度防御型（25/75）**: 股票 25% + 债券 75%，适合新手和保守投资者
+            - **平衡型（50/50）**: 股票 50% + 债券 50%，格雷厄姆推荐，牛市不缺席，熊市不致命
+            - **进取型（70/30）**: 股票 70% + 债券 30%，适合有认知和纪律的投资者
+            
+            ### 🔐 安全性
+            
+            - 密码使用 SHA-256 哈希存储
+            - 金额数据使用 AES-256-GCM 加密
+            - 完全离线运行，不上传任何数据
+            - 数据库文件可随时备份
+            
+            ### 📝 技术栈
+            
+            - **框架**: Wails v2 (Go + Vue3)
+            - **后端**: Go 1.24 + GORM
+            - **前端**: Vue 3 + Element Plus + ECharts
+            - **数据库**: SQLite (modernc.org/sqlite，纯 Go 实现，无需 CGO)
+            
+            ---
+            
+            🐛 **问题反馈**: [Issues](https://github.com/${{ github.repository }}/issues)
+            📖 **使用文档**: [README](https://github.com/${{ github.repository }}/blob/main/README.md)
+            📝 **许可证**: GNU GENERAL PUBLIC LICENSE
+            
+            💡 **投资理念**: "从短期来看，市场是一台投票机；但从长期来看，它是一台称重机。" - 本杰明·格雷厄姆
+          files: |
+            artifacts/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
