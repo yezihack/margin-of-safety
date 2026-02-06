@@ -40,8 +40,11 @@ func GetDBInfo() (map[string]interface{}, error) {
 		return nil, err
 	}
 
+	// 返回数据库所在目录路径（方便用户备份整个目录）
+	dbDir := filepath.Dir(dbPath)
+
 	info := map[string]interface{}{
-		"path": dbPath,
+		"path": dbDir, // 返回目录路径而不是文件路径
 	}
 
 	// 检查文件是否存在并获取大小

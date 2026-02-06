@@ -41,7 +41,7 @@
       </template>
       
       <el-descriptions :column="1" border v-loading="dbInfoLoading">
-        <el-descriptions-item label="存储路径">
+        <el-descriptions-item label="数据目录">
           <el-text type="primary" style="font-family: monospace; font-size: 12px;">
             {{ dbInfo.path || '加载中...' }}
           </el-text>
@@ -52,7 +52,7 @@
             @click="copyPath"
             style="margin-left: 10px;"
           >
-            复制路径
+            复制目录路径
           </el-button>
         </el-descriptions-item>
         <el-descriptions-item label="文件大小" v-if="dbInfo.exists">
@@ -82,7 +82,7 @@
 
       <el-alert 
         style="margin-top: 15px;"
-        title="数据库包含所有资产、历史记录和配置信息，请定期备份" 
+        title="数据目录包含数据库文件（margin.db）及所有资产、历史记录和配置信息，建议定期备份整个目录" 
         type="warning" 
         :closable="false"
         show-icon
@@ -437,7 +437,7 @@ const copyPath = () => {
   if (dbInfo.value.path) {
     navigator.clipboard.writeText(dbInfo.value.path)
       .then(() => {
-        ElMessage.success('路径已复制到剪贴板')
+        ElMessage.success('数据目录路径已复制到剪贴板')
       })
       .catch(() => {
         ElMessage.error('复制失败')

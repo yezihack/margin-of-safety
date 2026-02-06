@@ -326,10 +326,12 @@
 数据库文件存储在用户主目录的隐藏文件夹中：
 
 ```
-Windows: C:\Users\<用户名>\.marginofsafety\margin.db
-macOS:   /Users/<用户名>/.marginofsafety/margin.db
-Linux:   /home/<用户名>/.marginofsafety/margin.db
+Windows: C:\Users\<用户名>\.marginofsafety\
+macOS:   /Users/<用户名>/.marginofsafety/
+Linux:   /home/<用户名>/.marginofsafety/
 ```
+
+> 💡 **备份提示**: 复制整个 `.marginofsafety` 目录即可备份所有数据（包含 margin.db 数据库文件）
 
 ### 数据备份建议
 

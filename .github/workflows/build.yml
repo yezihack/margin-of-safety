@@ -269,9 +269,11 @@ jobs:
             ### 📁 数据存储
             
             数据库文件存储在用户主目录下：
-            - **Windows**: `C:\Users\<用户名>\.marginofsafety\margin.db`
-            - **Linux**: `/home/<用户名>/.marginofsafety/margin.db`
-            - **macOS**: `/Users/<用户名>/.marginofsafety/margin.db`
+            - **Windows**: `C:\Users\<用户名>\.marginofsafety\`
+            - **macOS**: `/Users/<用户名>/.marginofsafety/`
+            - **Linux**: `/home/<用户名>/.marginofsafety/`
+            
+            > 💡 **备份提示**: 复制整个 `.marginofsafety` 目录即可备份所有数据
             
             ### 🚀 使用说明
             
