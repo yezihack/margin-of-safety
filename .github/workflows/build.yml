@@ -38,7 +38,9 @@ jobs:
           npm install
 
       - name: Copy application icon
-        run: Copy-Item "frontend/assets/icon64.png" "build/appicon.png" -Force
+        run: |
+          New-Item -ItemType Directory -Force -Path build
+          Copy-Item "frontend/assets/icon64.png" "build/appicon.png" -Force
         shell: pwsh
 
       - name: Get version from tag
@@ -100,7 +102,9 @@ jobs:
           npm install
 
       - name: Copy application icon
-        run: cp frontend/assets/icon64.png build/appicon.png
+        run: |
+          mkdir -p build
+          cp frontend/assets/icon64.png build/appicon.png
 
       - name: Get version from tag
         id: get_version
@@ -160,7 +164,9 @@ jobs:
           npm install
 
       - name: Copy application icon
-        run: cp frontend/assets/icon64.png build/appicon.png
+        run: |
+          mkdir -p build
+          cp frontend/assets/icon64.png build/appicon.png
 
       - name: Get version from tag
         id: get_version
